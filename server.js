@@ -3,10 +3,37 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const app = express();
 const port = 8000;
+// import dependencies
+const jwt = require("express-jwt"); 
+const jwksRsa = require("jwks-rsa"); 
 
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+const authConfig = {
+    domain: "YOUR_DOMAIN",
+    audience: "YOUR_API_IDENTIFIER"
+};
+// Set up Auth0 configuration 
+const authConfig = {
+    domain: "dev-td354-9c.us.auth0.com",
+    audience: "https://vue-express-api.com"
+};
+// Create middleware to validate the JWT using express-jwt
+const checkJwt = jwt({
+    // Provide a signing key based on the key identifier in the header and the signing keys provided by your Auth0 JWKS endpoint.
+    secret: jwksRsa.expressJwtSecret({
+      cache: true,
+      rateLimit: true,
+      jwksRequestsPerMinute: 5,
+      jwksUri: `https://${authConfig.domain}/.well-known/jwks.json`
+    }),
+  
+    // Validate the audience (Identifier) and the issuer (Domain).
+    audience: authConfig.audience,
+    issuer: `https://${authConfig.domain}/`,
+    algorithm: ["RS256"]
+});
 let events = 
 [
   {
@@ -38,11 +65,12 @@ let events =
     time: '12:00'
   }
 ];
+// get all events
 app.get('/events', (req, res) => {
     res.send(events);
 });
 
-app.get('/events/:id', (req, res) => {
+app.get('/events/:id', checkJwt, (req, res) => {
     const id = Number(req.params.id);
     const event = events.find(event => event.id === id);
     res.send(event);
